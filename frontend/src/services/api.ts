@@ -10,21 +10,30 @@ export interface ImpactMetrics {
 
 export interface ImpactResponse {
   metrics: ImpactMetrics;
-  impacted_points: any;
-  active_risk_zones: any;
+  impacted_points?: any;
+  active_risk_zones?: any;
 }
 
-export const fetchImpactAnalysis = async (): Promise<ImpactResponse> => {
-  const response = await axios.get(`${API_BASE_URL}/impact-analysis/`);
+export const fetchImpactAnalysis = async (forecastDays = 0, category = 'ALL'): Promise<ImpactResponse> => {
+  const response = await axios.get(`${API_BASE_URL}/impact-analysis/`, {
+    params: { 
+      forecast_days: forecastDays,
+      category: category 
+    },
+  });
   return response.data;
 };
 
-export const fetchAllSightings = async (): Promise<any> => {
-  const response = await axios.get(`${API_BASE_URL}/sightings/`);
+export const fetchAllSightings = async (category = 'ALL'): Promise<any> => {
+  const response = await axios.get(`${API_BASE_URL}/sightings/`, {
+    params: { category }
+  });
   return response.data;
 };
 
-export const fetchAllPlasticZones = async (): Promise<any> => {
-  const response = await axios.get(`${API_BASE_URL}/plastic-zones/`);
+export const fetchAllPlasticZones = async (forecastDays = 0): Promise<any> => {
+  const response = await axios.get(`${API_BASE_URL}/plastic-zones/`, {
+    params: { forecast_days: forecastDays },
+  });
   return response.data;
 };

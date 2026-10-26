@@ -1,14 +1,14 @@
 # Eco-Impact-Predictor
-An oceanographic spatial analytics platform and interactive WebGL dashboard designed to quantify and visualize real-time spatial overlaps between marine wildlife migration corridors and high-density ocean microplastic gyres.
+An advanced oceanographic spatial analytics platform and interactive WebGL dashboard designed to quantify, model, and visualize real-time spatial overlaps between marine wildlife migration corridors and high-density microplastic sampling zones driven by ocean surface currents.
 
 ## Technical Overview & Core Value
-Eco-Impact Predictor processes marine species telemetry occurrence data from public oceanographic APIs (such as OBIS) and executes spatial containment queries against modeled ocean microplastic accumulation zones using PostGIS spatial indexing.
+Eco-Impact Predictor ingests real-time marine species occurrence telemetry from **OBIS** (Ocean Biodiversity Information System) alongside global surface microplastic sampling data from **The Ocean Cleanup**, **GBIF**, and **NOAA NCEI**. It executes high-performance spatial containment queries using PostGIS to compute live Exposure Risk Indices for vulnerable marine taxa.
 
 ### Key Architecture Highlights
-1. Real-Time Spatial Containment Engine: Evaluates point-in-polygon spatial intersections between wildlife movement telemetry points and microplastic convergence polygons using PostGIS GEOS functions (ST_Intersects).
-2. GPU-Accelerated 3D Map Visualization: Renders spatial data layers at 60 FPS using Deck.gl and Mapbox GL JS.
-3. Multi-Species Categorical Filtering: Color-codes species categories (Sea Turtles, Cetaceans/Whales, Pelagic Birds) and filters telemetry layers dynamically on the client side.
-4. Interactive Hover Inspector: Provides instant context tooltips containing taxonomy data, timestamps, coordinates, and gyre density indices.
+1. **Satellite-Driven Drift Simulation Engine:** Applies advection dynamics using real-world surface ocean current vectors ($u$: East/West, $v$: North/South in m/s) fetched directly from **NOAA OSCAR** and **Copernicus Marine Service** satellite datasets.
+2. **GPU-Accelerated WebGL Visualization:** Renders high-density microplastic concentration fields at 60 FPS using Deck.gl (`HeatmapLayer` and `GeoJsonLayer`) and Mapbox GL JS.
+3. **Real-Time Spatial Intersection Engine:** Executes optimized PostGIS spatial queries (`ST_Intersects`, bounding-box pre-filtering) to calculate the percentage of marine species falling inside high-risk pollution zones.
+4. **Glassmorphic Interactive Inspector:** Offers detailed real-time hover tooltips and metric cards showing species taxonomy, particle density counts, and predicted forecast drift horizons.
 
 ## Local Deployment Guide
 
@@ -41,10 +41,10 @@ Apply database migrations to generate PostGIS tables and spatial indexes
 Populate PostgreSQL with synthetic microplastic gyre polygons and live species telemetry from the public OBIS API:
 
 ```bash
-    # Ingest microplastic density polygons
+    # Ingest live microplastic observations (The Ocean Cleanup / GBIF / NOAA)
     docker-compose exec backend python manage.py ingest_plastics
 
-    # Ingest multi-species wildlife telemetry data
+    # Ingest multi-species wildlife telemetry from OBIS
     docker-compose exec backend python manage.py ingest_obis
 ```
 
@@ -53,41 +53,46 @@ Open your browser and visit:
 * Web Dashboard: http://localhost:3000   
 * Analytics Overlap API: http://localhost:8000/api/impact-analysis/
 * Sightings GeoJSON API: http://localhost:8000/api/sightings/
-* Plastic Gyres GeoJSON API: http://localhost:8000/api/plastic-zones/
+* Microplastic Density Zones GeoJSON API: http://localhost:8000/api/plastic-zones/
 
 ## API Endpoints Reference
 
-### GET /api/impact-analysis/
-Computes spatial containment and returns spatial overlap metrics:
-* total_sightings_analyzed: Total telemetry points processed.
-* sightings_in_high_risk_zones: Points falling inside microplastic gyres.   
-* overall_species_risk_index_pct: Exposure risk percentage.   
-* active_risk_zones: GeoJSON collection of high-density plastic polygons.   
+### GET /api/impact-analysis/?forecast_days={days}&category={category}
+Computes spatial intersection risk metrics and returns advected plastic positions:
+* total_sightings_analyzed: Total wildlife telemetry points processed.
+* sightings_in_high_risk_zones: Telemetry points falling inside active plastic zones.
+* overall_species_risk_index_pct: Percentage of species exposed to high risk.  
+* active_risk_zones: GeoJSON FeatureCollection of active/forecasted plastic zones.
 * impacted_points: GeoJSON collection of impacted telemetry records.  
 
-### GET /api/sightings/
-Returns a GeoJSON FeatureCollection containing all recorded wildlife telemetry points with species metadata.
+### GET /api/sightings/?category={category}
+Returns a GeoJSON FeatureCollection of wildlife telemetry points filtered by taxon category (Reptile, Mammal, Bird, Fish).
 
-### GET /api/plastic-zones/
-Returns a GeoJSON FeatureCollection containing all active ocean microplastic concentration polygons.
+### GET /api/plastic-zones/?forecast_days={days}
+Returns a GeoJSON FeatureCollection of microplastic concentration zones projected {days} into the future using real ocean surface current vectors.
 
 ## Future Steps
 ### Enhanced UI / UX & Professional Design System
-- [ ] Redefined Design System: Upgrade the layout using CSS modules or custom Tailwinf components with polished Glassmorphism effects, customizable theme toggles (Dark/Ocean mode), and responsive mobile support.
-- [ ] Timeline Slider & Historical Playback: Introduce a time-slider widget allowing users to scrub back and forth through historical telemetry data over a 12-month period.
-- [ ] Interactive Tooltip & Inspector Panel: Resolve hover event handling on Deck.gl layers to show detailed inspector cards when hovering over points or polygons (displaying scientific species metadata, exact coordinates, recording date, and microplastic particle density).
+- [X] Redefined Design System: Modern Glassmorphic UI with customizable theme toggles (Dark/Ocean mode).
+- [x] GPU Heatmap & Density Layering: Replaced rigid bounding boxes with continuous GPU-accelerated HeatmapLayer gradients.
+- [x] Interactive Inspection Inspector: Hover tooltips displaying taxonomy, density indices, and forecast horizons.
+- [ ] Ocean Vector Flow Layer: Integrate an animated particle flow layer (Windy/Nullschool style) rendering surface ocean currents ($u, v$) in real time.
 
-### Integration of Real-World Datasets
-- [ ] Live Microplastic Sensor Feeds: Integrate real oceanographic microplastic data from the NOAA Marine Debris Program, Copernicus Marine Service, or Global Plastic Watch satellite detections instead of synthetic polygon models.
+### Real-World Data & Physics Integration
+- [X] Live Microplastic Ingestion Pipeline: Multi-source ingestion pulling real sampling records from The Ocean Cleanup, GBIF, and NOAA NCEI datasets.
+- [X] Satellite Current Advection Model: Advection model utilizing real $u, v$ ocean current vectors from NOAA OSCAR / Copernicus Marine Service.
+- [ ] SST & Climate Layer Integration: Overlay Sea Surface Temperature (SST) satellite data to correlate thermal stress with marine migration shifts and plastic accumulation.
 
-- [ ] Expanded Marine Species Telemetry: Expand the OBIS/GBIF ingestion pipeline to cover hundreds of marine species across multiple categories (e.g., Sharks, Sea Lions, Tuna, Seabirds) with tens of thousands of data points.
+### Automation, Scalability & Reporting
+- [ ] Automated Ingestion Tasks: Implement Celery & Redis background workers to periodically update satellite current vectors and species telemetry.
+- [ ] MVT Vector Tile Streaming: Stream millions of spatial points using Mapbox Vector Tiles (MVT / Protobuf) and Redis spatial caching.
+- [ ] Automated Impact PDF Report Generator: One-click export feature generating downloadable PDF executive summary reports with risk breakdowns per species category.
 
-### Real-Time Automation & Performance
-- [ ] Automated Data Ingestion Jobs: Set up periodic tasks using Celery and Redis to automatically query external oceanographic APIs and refresh microplastic density maps and wildlife tracking records.
+### Enterprise Roadmap & Advanced Capabilities
 
-- [ ] Geospatial Query Optimization: Implement vector tile streaming (MVT / Protobuf) and server-side spatial caching with PostGIS and Redis to support millions of geographic features without dropping frame rates.
-
-### Advanced Analytics & Reporting
-- [ ] Species-Specific Risk Profiles: Allow users to generate and download PDF impact reports detailing risk exposure percentages and high-risk migration bottlenecks per species category.
-
-- [ ] Predictive ML Movement Models: Integrate AI-driven motion prediction (e.g., Lagrangian particle tracking models) to forecast where floating debris will move over the next 30 days relative to active animal trajectories.
+- [ ] **Animated Vector Field Layer (Windy-style Flow):** Render live 2D/3D ocean current velocity vectors ($u, v$) using WebGL shaders and Deck.gl particle dynamics.
+- [ ] **Graph Neural Network (GNN) Drift Forecasting:** Integrate PyTorch Geometric (PyG) models trained on NOAA Global Drifter data to predict non-linear microplastic dispersion up to 90 days ahead.
+- [ ] **MVT Tile Streaming Server:** Implement PostGIS `ST_AsMVT` protobuf tile streaming powered by Redis spatial caching to support rendering over 1,000,000 spatial points seamlessly.
+- [ ] **3D Submarine Bathymetry & Environmental Layers:** Render 3D seabed elevation alongside satellite-derived Sea Surface Temperature (SST) and Chlorophyll-a concentration layers.
+- [ ] **Automated Environmental Impact PDF Generator:** One-click automated report engine outputting institutional-grade PDF summary assessments with risk heatmaps and species vulnerability profiles.
+- [ ] **AI Conversational Spatial Agent:** Natural language GIS query interface allowing users to ask natural questions like *"Find critical overlap bottlenecks for leatherback turtles in the next 30 days"*.

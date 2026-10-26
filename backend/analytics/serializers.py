@@ -1,12 +1,12 @@
 from rest_framework import serializers
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
-from .models import MarineSpecies, SightingLocation, MicroplasticDensityZone
+from .models import MarineSighting, SightingLocation, MicroplasticDensityZone
 
 
-class MarineSpeciesSerializer(serializers.ModelSerializer):
+class MarineSightingSerializer(serializers.ModelSerializer):
     class Meta:
-        model = MarineSpecies
-        fields = '__all__'
+        model = MarineSighting
+        fields = ['id', 'species_name', 'common_name', 'category', 'location', 'timestamp']
 
 
 class SightingLocationGeoSerializer(GeoFeatureModelSerializer):
@@ -20,8 +20,7 @@ class SightingLocationGeoSerializer(GeoFeatureModelSerializer):
         fields = ('id', 'species_name', 'common_name', 'category', 'timestamp')
 
 
-class MicroplasticZoneGeoSerializer(GeoFeatureModelSerializer):
+class MicroplasticDensityZoneSerializer(serializers.ModelSerializer):
     class Meta:
         model = MicroplasticDensityZone
-        geo_field = 'polygon'
-        fields = ('id', 'density_index', 'updated_at')
+        fields = ['id', 'density_index', 'polygon', 'updated_at']

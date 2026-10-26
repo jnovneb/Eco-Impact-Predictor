@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: 'class', // Permite alternar temas vía clase en el <html>
   content: [
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -8,11 +9,18 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Paleta de colores para el modo Ocean
         ocean: {
-          dark: '#0a0f1d',
-          surface: '#121a2d',
-          accent: '#14b8a6',
+          950: '#031327',
+          900: '#072446',
+          800: '#0e3a6c',
+          700: '#165294',
+          400: '#38bdf8',
+          300: '#7dd3fc',
         },
+      },
+      boxShadow: {
+        glass: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
       },
     },
   },
