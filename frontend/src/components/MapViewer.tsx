@@ -36,7 +36,7 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
   const [isWebGlSupported, setIsWebGlSupported] = useState<boolean>(true);
   const { theme } = useTheme();
 
-  // Bind token globally to mapboxgl engine
+  // Enlazar el token globalmente al motor de mapbox-gl
   useEffect(() => {
     if (mapboxToken) {
       mapboxgl.accessToken = mapboxToken;
@@ -45,7 +45,7 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
     }
   }, [mapboxToken]);
 
-  // Validate browser WebGL acceleration context
+  // Validar aceleración WebGL en el navegador
   useEffect(() => {
     try {
       const canvas = document.createElement('canvas');
