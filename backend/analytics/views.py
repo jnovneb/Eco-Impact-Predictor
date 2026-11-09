@@ -1,10 +1,12 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework import status
 from django.contrib.gis.geos import Polygon, Point
 from .models import MarineSighting, MicroplasticDensityZone
 from .serializers import MarineSightingSerializer, MicroplasticDensityZoneSerializer
 from .services import fetch_live_noaa_plastics
 from .predictor import predict_plastic_drift
+from .services import get_ocean_currents_grid
 
 
 def point_in_bbox(lon, lat, bbox):
@@ -13,6 +15,11 @@ def point_in_bbox(lon, lat, bbox):
     """
     min_x, min_y, max_x, max_y = bbox
     return min_x <= lon <= max_x and min_y <= lat <= max_y
+
+class OceanCurrentsGridView(APIView):
+    def get(self, request):
+        data = get_ocean_currents_grid()
+        return Response(data, status=status.HTTP_200_OK)
 
 
 class EnvironmentalImpactAnalysisView(APIView):

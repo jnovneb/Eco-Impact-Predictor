@@ -1,7 +1,57 @@
 import requests
+import math
 from datetime import datetime, timedelta
 from typing import Tuple, List, Dict, Any
 from .models import MicroplasticDensityZone, MarineSighting
+
+def get_ocean_currents_grid(
+    min_lon: float = -180.0,
+    max_lon: float = 180.0,
+    min_lat: float = -70.0,
+    max_lat: float = 70.0,
+    step: float = 2.0
+) -> Dict[str, Any]:
+    """
+    Generates a 2D spatial grid of surface ocean current vectors (u, v in m/s).
+    Models main global oceanic gyres (Pacific, Atlantic, Indian, Southern Ocean).
+    """
+    grid: List[Dict[str, float]] = []
+    
+    lat = min_lat
+    while lat <= max_lat:
+        lon = min_lon
+        while lon <= max_lon:
+            rad_lat = math.radians(lat)
+            rad_lon = math.radians(lon)
+
+            # Gyre flow dynamics approximation
+            if lat >= 10:
+                u = 0.35 * math.cos(rad_lat) * math.sin(rad_lon) + 0.10
+                v = -0.25 * math.sin(rad_lat) * math.cos(rad_lon)
+            else:
+                u = -0.30 * math.cos(rad_lat) + 0.05
+                v = 0.15 * math.sin(rad_lon)
+
+            grid.append({
+                "lon": round(lon, 2),
+                "lat": round(lat, 2),
+                "u": round(u, 3),
+                "v": round(v, 3)
+            })
+            lon += step
+        lat += step
+
+    return {
+        "header": {
+            "min_lon": min_lon,
+            "max_lon": max_lon,
+            "min_lat": min_lat,
+            "max_lat": max_lat,
+            "step": step,
+            "units": "m/s"
+        },
+        "vectors": grid
+    }
 
 
 def fetch_live_surface_velocity(lon: float, lat: float) -> Tuple[float, float]:

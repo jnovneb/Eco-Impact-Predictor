@@ -10,6 +10,11 @@ Eco-Impact Predictor ingests real-time marine species occurrence telemetry from 
 3. **Real-Time Spatial Intersection Engine:** Executes optimized PostGIS spatial queries (`ST_Intersects`, bounding-box pre-filtering) to calculate the percentage of marine species falling inside high-risk pollution zones.
 4. **Glassmorphic Interactive Inspector:** Offers detailed real-time hover tooltips and metric cards showing species taxonomy, particle density counts, and predicted forecast drift horizons.
 
+## Ocean Current Vector Flow Status
+
+### Current Implementation (v0.2 - Dynamic Vector Flow)
+The platform includes an animated particle flow layer (`VectorFlowLayer`) rendering surface stream lines in real time across global ocean gyres. Currently, `/api/ocean-currents-grid/` serves an analytical spatial vector grid ($u, v$ components in m/s) simulating major ocean gyres (Pacific, Atlantic, Indian, and Antarctic Circumpolar Current) to achieve smooth, zero-latency client-side rendering.
+
 ## Local Deployment Guide
 
 ### Prerequisites
@@ -27,7 +32,8 @@ Clone the repository and add your Mapbox access token to .env file inside /front
 From the project root directory, run:
 
 ```bash
-    docker-compose up --build -d
+    docker-compose --env-file ./.env build --no-cache frontend
+    docker-compose up -d
 ```
 
 ### Step 3: Run Database Migrations
@@ -54,6 +60,7 @@ Open your browser and visit:
 * Analytics Overlap API: http://localhost:8000/api/impact-analysis/
 * Sightings GeoJSON API: http://localhost:8000/api/sightings/
 * Microplastic Density Zones GeoJSON API: http://localhost:8000/api/plastic-zones/
+* Ocean Currents Grid API: http://localhost:8000/api/ocean-currents-grid/
 
 ## API Endpoints Reference
 
@@ -71,12 +78,15 @@ Returns a GeoJSON FeatureCollection of wildlife telemetry points filtered by tax
 ### GET /api/plastic-zones/?forecast_days={days}
 Returns a GeoJSON FeatureCollection of microplastic concentration zones projected {days} into the future using real ocean surface current vectors.
 
+### GET /api/ocean-currents-grid-
+Returns a spatial grid of surface velocity vector points ($u, v$ m/s) utilized by the client-side particle animation engine.
+
 ## Future Steps
 ### Enhanced UI / UX & Professional Design System
 - [X] Redefined Design System: Modern Glassmorphic UI with customizable theme toggles (Dark/Ocean mode).
 - [x] GPU Heatmap & Density Layering: Replaced rigid bounding boxes with continuous GPU-accelerated HeatmapLayer gradients.
 - [x] Interactive Inspection Inspector: Hover tooltips displaying taxonomy, density indices, and forecast horizons.
-- [ ] Ocean Vector Flow Layer: Integrate an animated particle flow layer (Windy/Nullschool style) rendering surface ocean currents ($u, v$) in real time.
+- [x] Ocean Vector Flow Layer: Integrate an animated particle flow layer (Windy/Nullschool style) rendering surface ocean currents ($u, v$) in real time.
 
 ### Real-World Data & Physics Integration
 - [X] Live Microplastic Ingestion Pipeline: Multi-source ingestion pulling real sampling records from The Ocean Cleanup, GBIF, and NOAA NCEI datasets.
@@ -90,7 +100,7 @@ Returns a GeoJSON FeatureCollection of microplastic concentration zones projecte
 
 ### Enterprise Roadmap & Advanced Capabilities
 
-- [ ] **Animated Vector Field Layer (Windy-style Flow):** Render live 2D/3D ocean current velocity vectors ($u, v$) using WebGL shaders and Deck.gl particle dynamics.
+- [ ] **Live Operational Currents Pipeline:** Replace the current synthetic vector flow grid with live daily GRIB2/NetCDF ingestion from NOAA OSCAR using Python xarray and cfgrib.
 - [ ] **Graph Neural Network (GNN) Drift Forecasting:** Integrate PyTorch Geometric (PyG) models trained on NOAA Global Drifter data to predict non-linear microplastic dispersion up to 90 days ahead.
 - [ ] **MVT Tile Streaming Server:** Implement PostGIS `ST_AsMVT` protobuf tile streaming powered by Redis spatial caching to support rendering over 1,000,000 spatial points seamlessly.
 - [ ] **3D Submarine Bathymetry & Environmental Layers:** Render 3D seabed elevation alongside satellite-derived Sea Surface Temperature (SST) and Chlorophyll-a concentration layers.
