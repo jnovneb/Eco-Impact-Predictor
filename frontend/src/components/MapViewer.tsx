@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import DeckGL from '@deck.gl/react';
 import Map from 'react-map-gl';
+import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { ScatterplotLayer } from '@deck.gl/layers';
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
@@ -35,8 +36,11 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
   const [isWebGlSupported, setIsWebGlSupported] = useState<boolean>(true);
   const { theme } = useTheme();
 
+  // Bind token globally to mapboxgl engine
   useEffect(() => {
-    if (!mapboxToken) {
+    if (mapboxToken) {
+      mapboxgl.accessToken = mapboxToken;
+    } else {
       console.warn('Mapbox Token is missing from NEXT_PUBLIC_MAPBOX_TOKEN environment variable!');
     }
   }, [mapboxToken]);
