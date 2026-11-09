@@ -13,8 +13,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className="antialiased bg-slate-950 text-slate-100 overflow-hidden">
+    <html lang="en">
+      <head>
+        <meta
+          httpEquiv="Content-Security-Policy"
+          content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://api.mapbox.com; worker-src 'self' blob:; child-src blob:; img-src 'self' data: blob: https://*.mapbox.com; connect-src 'self' https://*.mapbox.com https://eco-impact-predictor.onrender.com; style-src 'self' 'unsafe-inline' https://api.mapbox.com;"
+        />
+      </head>
+      <body>
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
