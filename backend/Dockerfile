@@ -16,3 +16,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 EXPOSE 8000
+
+# Start Gunicorn production server bound to Render's dynamic PORT (defaults to 10000)
+CMD ["sh", "-c", "gunicorn eco_project.wsgi:application --bind 0.0.0.0:${PORT:-10000}"]

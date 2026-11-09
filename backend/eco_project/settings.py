@@ -1,10 +1,13 @@
 import os
 from pathlib import Path
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-eco-impact-predictor-key-change-in-prod'
-DEBUG = True
+# Security settings read from environment
+SECRET_KEY = os.environ.get('SECRET_KEY', 'djangodjango')
+DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 't')
+
 ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
@@ -26,6 +29,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Serves static assets on Render
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -36,15 +40,18 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'eco_project.urls'
 
+# Parse Render's DATABASE_URL or fall back to local PostGIS connection string
+DATABASE_URL = os.environ.get(
+    'DATABASE_URL', 
+    'postgis://postgres:postgrespassword@localhost:5432/eco_predictor'
+)
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': os.environ.get('DB_NAME', 'eco_predictor'),
-        'USER': os.environ.get('DB_USER', 'postgres'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', 'postgrespassword'),
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
-    }
+    'default': dj_database_url.parse(
+        DATABASE_URL,
+        conn_max_age=600,
+        engine='django.contrib.gis.db.backends.postgis'
+    )
 }
 
 TEMPLATES = [
@@ -69,5 +76,8 @@ LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
+
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
