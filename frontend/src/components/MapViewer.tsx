@@ -176,7 +176,7 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
           webgl2: true,
           failIfMajorPerformanceCaveat: false,
         }}
-        onError={(error) => {
+        onError={(error: any) => {
           if (error?.message?.includes('WebGL') || error?.message?.includes('Context')) {
             setIsWebGlSupported(false);
           }
