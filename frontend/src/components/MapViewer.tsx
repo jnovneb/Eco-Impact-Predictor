@@ -126,7 +126,7 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
         getPosition: [filteredFeatures],
         getFillColor: [filteredFeatures, selectedCategory],
       },
-      onHover: info => setHoverInfo(info),
+      onHover: (info: any) => setHoverInfo(info),
     }),
   ];
 
