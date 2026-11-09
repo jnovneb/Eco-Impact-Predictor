@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const RAW_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = RAW_BASE.replace(/\/api\/?$/, '').replace(/\/$/, '');
 
 export interface VectorGridPoint {
   lon: number;
@@ -36,33 +37,27 @@ export interface ImpactResponse {
 }
 
 export const fetchImpactAnalysis = async (forecastDays = 0, category = 'ALL'): Promise<ImpactResponse> => {
-  const response = await axios.get(`${API_BASE_URL}/impact-analysis/`, {
-    params: { 
-      forecast_days: forecastDays,
-      category: category 
-    },
+  const response = await axios.get(`${API_BASE_URL}/api/impact-analysis/`, {
+    params: { forecast_days: forecastDays, category },
   });
   return response.data;
 };
 
 export const fetchAllSightings = async (category = 'ALL'): Promise<any> => {
-  const response = await axios.get(`${API_BASE_URL}/sightings/`, {
+  const response = await axios.get(`${API_BASE_URL}/api/sightings/`, {
     params: { category }
   });
   return response.data;
 };
 
 export const fetchAllPlasticZones = async (forecastDays = 0): Promise<any> => {
-  const response = await axios.get(`${API_BASE_URL}/plastic-zones/`, {
+  const response = await axios.get(`${API_BASE_URL}/api/plastic-zones/`, {
     params: { forecast_days: forecastDays },
   });
   return response.data;
 };
 
-/**
- * Fetches structured ocean surface current velocity vectors (u, v in m/s) for the particle vector layer.
- */
 export const fetchOceanCurrentsGrid = async (): Promise<OceanCurrentsGridResponse> => {
-  const response = await axios.get(`${API_BASE_URL}/ocean-currents-grid/`);
+  const response = await axios.get(`${API_BASE_URL}/api/ocean-currents-grid/`);
   return response.data;
 };
