@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'export',
+  images: {
+    unoptimized: true, // Requerido para exportación estática de imágenes en GitHub Pages
+  },
   reactStrictMode: true,
   transpilePackages: ['@deck.gl/layers', '@deck.gl/core', '@deck.gl/react'],
   async headers() {
