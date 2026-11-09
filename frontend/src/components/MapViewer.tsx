@@ -182,12 +182,6 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
           }
         }}
       >
-        <Map
-          mapboxAccessToken={mapboxToken}
-          mapStyle={mapStyle}
-          projection="mercator"
-          reuseMaps
-        />
       </DeckGL>
 
       {/* Glassmorphic Tooltip */}
