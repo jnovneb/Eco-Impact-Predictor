@@ -35,6 +35,12 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
   const [isWebGlSupported, setIsWebGlSupported] = useState<boolean>(true);
   const { theme } = useTheme();
 
+  useEffect(() => {
+    if (!mapboxToken) {
+      console.warn('Mapbox Token is missing from NEXT_PUBLIC_MAPBOX_TOKEN environment variable!');
+    }
+  }, [mapboxToken]);
+
   // Validate browser WebGL acceleration context
   useEffect(() => {
     try {
@@ -52,7 +58,6 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
     ? 'mapbox://styles/mapbox/navigation-night-v1'
     : 'mapbox://styles/mapbox/dark-v11';
 
-  // Extract microplastic centroid points for continuous HeatmapLayer GPU aggregation
   const plasticPoints = useMemo(() => {
     const features = plasticZonesData?.features || [];
     return features.map((f: any) => {
@@ -88,7 +93,6 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
   }, [features, selectedCategory]);
 
   const layers = [
-    // Layer 1: GPU-Accelerated Microplastic Density Heatmap Layer
     new HeatmapLayer({
       id: 'plastic-heatmap-layer',
       data: plasticPoints,
@@ -98,10 +102,10 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
       intensity: 1.8,
       threshold: 0.03,
       colorRange: [
-        [34, 211, 238, 40],   // Cyan (Low Density)
-        [251, 146, 60, 160],  // Orange (Medium Density)
-        [244, 63, 94, 220],   // Crimson Red (High Density)
-        [225, 29, 72, 255]    // Deep Magenta (Critical Gyre Area)
+        [34, 211, 238, 40],
+        [251, 146, 60, 160],
+        [244, 63, 94, 220],
+        [225, 29, 72, 255]
       ],
       updateTriggers: {
         getPosition: [plasticPoints],
@@ -109,7 +113,6 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
       }
     }),
 
-    // Layer 2: Marine Telemetry Sightings Layer
     new ScatterplotLayer({
       id: 'sightings-layer',
       data: filteredFeatures,
@@ -185,7 +188,6 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
       >
       </DeckGL>
 
-      {/* Glassmorphic Tooltip */}
       {hoverInfo?.object && (
         <div
           style={{
