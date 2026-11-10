@@ -9,6 +9,12 @@ import { ScatterplotLayer } from '@deck.gl/layers';
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 import { useTheme } from '@/context/ThemeContext';
 
+// Force Mapbox GL JS to use the non-eval CSP Web Worker
+// @ts-ignore
+import MapboxWorker from 'mapbox-gl/dist/mapbox-gl-csp-worker';
+// @ts-ignore
+mapboxgl.workerClass = MapboxWorker;
+
 const INITIAL_VIEW_STATE = {
   longitude: -140.0,
   latitude: 25.0,
