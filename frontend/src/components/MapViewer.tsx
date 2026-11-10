@@ -9,10 +9,6 @@ import { ScatterplotLayer } from '@deck.gl/layers';
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 import { useTheme } from '@/context/ThemeContext';
 
-// Fix para Mapbox Web Workers en Next.js
-// @ts-ignore
-mapboxgl.workerClass = require('worker-loader!mapbox-gl/dist/mapbox-gl-csp-worker').default;
-
 const INITIAL_VIEW_STATE = {
   longitude: -140.0,
   latitude: 25.0,
@@ -40,12 +36,14 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
   const [isWebGlSupported, setIsWebGlSupported] = useState<boolean>(true);
   const { theme } = useTheme();
 
+  // Bind token globally to mapboxgl engine
   useEffect(() => {
     if (mapboxToken) {
       mapboxgl.accessToken = mapboxToken;
     }
   }, [mapboxToken]);
 
+  // Validate browser WebGL acceleration context
   useEffect(() => {
     try {
       const canvas = document.createElement('canvas');
