@@ -9,6 +9,10 @@ import { ScatterplotLayer } from '@deck.gl/layers';
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 import { useTheme } from '@/context/ThemeContext';
 
+// Fix para Mapbox Web Workers en Next.js
+// @ts-ignore
+mapboxgl.workerClass = require('worker-loader!mapbox-gl/dist/mapbox-gl-csp-worker').default;
+
 const INITIAL_VIEW_STATE = {
   longitude: -140.0,
   latitude: 25.0,
@@ -36,16 +40,12 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
   const [isWebGlSupported, setIsWebGlSupported] = useState<boolean>(true);
   const { theme } = useTheme();
 
-  // Enlazar el token globalmente al motor de mapbox-gl
   useEffect(() => {
     if (mapboxToken) {
       mapboxgl.accessToken = mapboxToken;
-    } else {
-      console.warn('Mapbox Token is missing from NEXT_PUBLIC_MAPBOX_TOKEN environment variable!');
     }
   }, [mapboxToken]);
 
-  // Validar aceleración WebGL en el navegador
   useEffect(() => {
     try {
       const canvas = document.createElement('canvas');
@@ -140,36 +140,8 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
 
   if (!isWebGlSupported) {
     return (
-      <div style={{
-        position: 'absolute',
-        inset: 0,
-        width: '100%',
-        height: '100%',
-        backgroundColor: '#020617',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#f43f5e',
-        textAlign: 'center',
-        padding: '20px'
-      }}>
-        <div style={{
-          backgroundColor: 'rgba(15, 23, 42, 0.9)',
-          border: '1px solid #334155',
-          padding: '24px 32px',
-          borderRadius: '12px',
-          maxWidth: '500px',
-          backdropFilter: 'blur(12px)'
-        }}>
-          <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 'bold' }}>
-            WebGL Context Error
-          </h3>
-          <p style={{ margin: 0, fontSize: '13px', color: '#94a3b8', lineHeight: '1.5' }}>
-            WebGL initialization blocked by browser flags or hardware limits.
-            <br />
-            Open <code style={{ color: '#2dd4bf' }}>chrome://flags/#use-angle</code>, select <strong>OpenGL</strong> or <strong>D3D11 WARP</strong>, and relaunch.
-          </p>
-        </div>
+      <div style={{ position: 'absolute', inset: 0, backgroundColor: '#020617', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f43f5e' }}>
+        <p>WebGL Context Error</p>
       </div>
     );
   }
