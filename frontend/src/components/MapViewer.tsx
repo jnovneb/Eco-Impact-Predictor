@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import DeckGL from '@deck.gl/react';
 import Map from 'react-map-gl';
-import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { ScatterplotLayer } from '@deck.gl/layers';
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
@@ -35,19 +34,6 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
   const [hoverInfo, setHoverInfo] = useState<any>(null);
   const [isWebGlSupported, setIsWebGlSupported] = useState<boolean>(true);
   const { theme } = useTheme();
-
-  // Debugging & Global Access Token Binding
-  useEffect(() => {
-    console.log('=== MAPBOX TOKEN DEBUG ===');
-    console.log('Token length:', mapboxToken.length);
-    console.log('Raw Token Value:', mapboxToken ? `${mapboxToken.substring(0, 10)}...` : 'EMPTY_STRING');
-
-    if (mapboxToken) {
-      mapboxgl.accessToken = mapboxToken;
-    } else {
-      console.error('❌ CRITICAL: NEXT_PUBLIC_MAPBOX_TOKEN is missing or empty in the client bundle!');
-    }
-  }, [mapboxToken]);
 
   // Validate hardware WebGL acceleration context support in client browser
   useEffect(() => {
