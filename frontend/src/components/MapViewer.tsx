@@ -1,14 +1,16 @@
 'use client';
-
+ 
 import React, { useState, useEffect, useMemo } from 'react';
 import DeckGL from '@deck.gl/react';
-import Map from 'react-map-gl';
+// Renombrado a MapGL para no pisar el `Map` nativo de JavaScript.
+// Si usas react-map-gl v8, cambia la ruta a: 'react-map-gl/mapbox'
+import MapGL from 'react-map-gl';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { ScatterplotLayer } from '@deck.gl/layers';
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 import { useTheme } from '@/context/ThemeContext';
-
+ 
 const INITIAL_VIEW_STATE = {
   longitude: -140.0,
   latitude: 25.0,
@@ -16,37 +18,44 @@ const INITIAL_VIEW_STATE = {
   pitch: 0,
   bearing: 0,
 };
-
+ 
 interface MapViewerProps {
   sightingsData: any;
   plasticZonesData: any;
   selectedCategory?: string;
 }
-
+ 
 const CATEGORY_COLORS: Record<string, [number, number, number]> = {
   Reptile: [16, 185, 129],
   Mammal: [59, 130, 246],
   Bird: [245, 158, 11],
   Fish: [168, 85, 247],
 };
-
-export default function MapViewer({ sightingsData, plasticZonesData, selectedCategory = 'ALL' }: MapViewerProps) {
+ 
+export default function MapViewer({
+  sightingsData,
+  plasticZonesData,
+  selectedCategory = 'ALL',
+}: MapViewerProps) {
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
   const [hoverInfo, setHoverInfo] = useState<any>(null);
-  const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
+  const [viewState, setViewState] = useState<any>(INITIAL_VIEW_STATE);
   const [isWebGlSupported, setIsWebGlSupported] = useState<boolean>(true);
   const { theme } = useTheme();
-
+ 
   useEffect(() => {
     if (mapboxToken) {
       mapboxgl.accessToken = mapboxToken;
     }
   }, [mapboxToken]);
-
+ 
   useEffect(() => {
     try {
       const canvas = document.createElement('canvas');
-      const gl = canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      const gl =
+        canvas.getContext('webgl2') ||
+        canvas.getContext('webgl') ||
+        canvas.getContext('experimental-webgl');
       if (!gl) {
         setIsWebGlSupported(false);
       }
@@ -54,11 +63,12 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
       setIsWebGlSupported(false);
     }
   }, []);
-
-  const mapStyle = theme === 'ocean'
-    ? 'mapbox://styles/mapbox/navigation-night-v1'
-    : 'mapbox://styles/mapbox/dark-v11';
-
+ 
+  const mapStyle =
+    theme === 'ocean'
+      ? 'mapbox://styles/mapbox/navigation-night-v1'
+      : 'mapbox://styles/mapbox/dark-v11';
+ 
   const plasticPoints = useMemo(() => {
     const features = plasticZonesData?.features || [];
     return features.map((f: any) => {
@@ -78,11 +88,14 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
       };
     });
   }, [plasticZonesData]);
-
-  const features = sightingsData?.features || [];
+ 
+  // useMemo para que `features` no sea un array nuevo en cada render
+  // (con `|| []` suelto se recreaba siempre y anulaba el useMemo de abajo).
+  const features = useMemo(() => sightingsData?.features || [], [sightingsData]);
+ 
   const filteredFeatures = useMemo(() => {
     if (selectedCategory === 'ALL') return features;
-
+ 
     const target = selectedCategory.toLowerCase();
     return features.filter((f: any) => {
       const cat = f.properties?.category?.toLowerCase() || '';
@@ -92,61 +105,81 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
       return cat.includes(target);
     });
   }, [features, selectedCategory]);
-
-  const layers = [
-    new HeatmapLayer({
-      id: 'plastic-heatmap-layer',
-      data: plasticPoints,
-      getPosition: (d: any) => d.coordinates,
-      getWeight: (d: any) => d.weight,
-      radiusPixels: 50,
-      intensity: 1.8,
-      threshold: 0.03,
-      colorRange: [
-        [34, 211, 238, 40],
-        [251, 146, 60, 160],
-        [244, 63, 94, 220],
-        [225, 29, 72, 255]
-      ],
-      updateTriggers: {
-        getPosition: [plasticPoints],
-        getWeight: [plasticPoints],
-      }
-    }),
-
-    new ScatterplotLayer({
-      id: 'sightings-layer',
-      data: filteredFeatures,
-      getPosition: (d: any) => d.geometry.coordinates,
-      getFillColor: (d: any) => {
-        const cat = d.properties?.category || 'Reptile';
-        const rgb = CATEGORY_COLORS[cat] || [168, 85, 247];
-        return [...rgb, 230];
-      },
-      getRadius: 25000,
-      radiusMinPixels: 4,
-      radiusMaxPixels: 10,
-      pickable: true,
-      updateTriggers: {
-        getPosition: [filteredFeatures],
-        getFillColor: [filteredFeatures, selectedCategory],
-      },
-      onHover: (info: any) => setHoverInfo(info),
-    }),
-  ];
-
+ 
+  // Las capas se memorizan: antes se recreaban en cada hover (setHoverInfo),
+  // lo que provocaba trabajo innecesario de deck.gl en cada movimiento del ratón.
+  const layers = useMemo(
+    () => [
+      new HeatmapLayer({
+        id: 'plastic-heatmap-layer',
+        data: plasticPoints,
+        getPosition: (d: any) => d.coordinates,
+        getWeight: (d: any) => d.weight,
+        radiusPixels: 50,
+        intensity: 1.8,
+        threshold: 0.03,
+        colorRange: [
+          [34, 211, 238, 40],
+          [251, 146, 60, 160],
+          [244, 63, 94, 220],
+          [225, 29, 72, 255],
+        ],
+        updateTriggers: {
+          getPosition: [plasticPoints],
+          getWeight: [plasticPoints],
+        },
+      }),
+ 
+      new ScatterplotLayer({
+        id: 'sightings-layer',
+        data: filteredFeatures,
+        getPosition: (d: any) => d.geometry.coordinates,
+        getFillColor: (d: any) => {
+          const cat = d.properties?.category || 'Reptile';
+          const rgb = CATEGORY_COLORS[cat] || [168, 85, 247];
+          return [...rgb, 230] as [number, number, number, number];
+        },
+        getRadius: 25000,
+        radiusMinPixels: 4,
+        radiusMaxPixels: 10,
+        pickable: true,
+        updateTriggers: {
+          getPosition: [filteredFeatures],
+          getFillColor: [filteredFeatures, selectedCategory],
+        },
+        onHover: (info: any) => setHoverInfo(info),
+      }),
+    ],
+    [plasticPoints, filteredFeatures, selectedCategory]
+  );
+ 
   if (!isWebGlSupported) {
     return (
-      <div style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', backgroundColor: '#020617', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f43f5e' }}>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: '#020617',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#f43f5e',
+        }}
+      >
         <p>WebGL Context Error</p>
       </div>
     );
   }
-
+ 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: '#020617' }}>
+      {/* Mapa base: lo controla DeckGL, por eso va con interactive={false} */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
-         setViewState(evt.viewState)}
+        <MapGL
+          {...viewState}
+          interactive={false}
           mapLib={mapboxgl}
           mapboxAccessToken={mapboxToken}
           mapStyle={mapStyle}
@@ -154,17 +187,18 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
           style={{ width: '100%', height: '100%' }}
         />
       </div>
-
-      <div style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none' }}>
+ 
+      {/* Capas de datos + controlador de interacción */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 2 }}>
         <DeckGL
           viewState={viewState}
           onViewStateChange={(e: any) => setViewState(e.viewState)}
           controller={true}
           layers={layers}
-          style={{ width: '100%', height: '100%', pointerEvents: 'all' }}
+          style={{ width: '100%', height: '100%' }}
         />
       </div>
-
+ 
       {hoverInfo?.object && (
         <div
           style={{
