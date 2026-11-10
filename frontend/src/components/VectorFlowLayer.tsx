@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+// @ts-ignore
 import { WebMercatorViewport } from '@deck.gl/core';
 
 interface VectorPoint {
@@ -50,7 +51,6 @@ export default function VectorFlowLayer({
     const width = (canvas.width = window.innerWidth);
     const height = (canvas.height = window.innerHeight);
 
-    // Generar proyección espacial Web Mercator del viewport actual
     const viewport = new WebMercatorViewport({
       width,
       height,
@@ -67,7 +67,6 @@ export default function VectorFlowLayer({
     const maxLon = bounds[2];
     const maxLat = bounds[3];
 
-    // Inicializar pool de partículas en coordenadas geográficas fijas
     const particles: GeoParticle[] = Array.from({ length: maxParticles }, () => ({
       lon: minLon + Math.random() * (maxLon - minLon),
       lat: minLat + Math.random() * (maxLat - minLat),
@@ -125,7 +124,6 @@ export default function VectorFlowLayer({
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
 
-        // Mapear coordenadas geográficas a píxeles de pantalla en tiempo real
         const [x, y] = currentViewport.project([p.lon, p.lat]);
 
         const vec = getVector(p.lon, p.lat);
@@ -144,7 +142,6 @@ export default function VectorFlowLayer({
         p.lat = nextLat;
         p.age++;
 
-        // Reiniciar partículas fuera del campo visual actual
         if (
           p.age >= p.maxAge ||
           p.lon < cMinLon ||
