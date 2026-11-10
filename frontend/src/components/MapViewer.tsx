@@ -33,10 +33,11 @@ const CATEGORY_COLORS: Record<string, [number, number, number]> = {
 export default function MapViewer({ sightingsData, plasticZonesData, selectedCategory = 'ALL' }: MapViewerProps) {
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
   const [hoverInfo, setHoverInfo] = useState<any>(null);
+  const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [isWebGlSupported, setIsWebGlSupported] = useState<boolean>(true);
   const { theme } = useTheme();
 
-  // Bind token globally to the mapbox-gl engine
+  // Force global access token assignment to Mapbox GL JS engine
   useEffect(() => {
     if (mapboxToken) {
       mapboxgl.accessToken = mapboxToken;
@@ -45,7 +46,7 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
     }
   }, [mapboxToken]);
 
-  // Validate browser WebGL hardware context
+  // Validate browser hardware WebGL context support
   useEffect(() => {
     try {
       const canvas = document.createElement('canvas');
@@ -62,6 +63,7 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
     ? 'mapbox://styles/mapbox/navigation-night-v1'
     : 'mapbox://styles/mapbox/dark-v11';
 
+  // Extract microplastic centroid points and density weights for GPU Heatmap aggregation
   const plasticPoints = useMemo(() => {
     const features = plasticZonesData?.features || [];
     return features.map((f: any) => {
@@ -82,6 +84,7 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
     });
   }, [plasticZonesData]);
 
+  // Dynamically filter marine species sightings based on selected category control
   const features = sightingsData?.features || [];
   const filteredFeatures = useMemo(() => {
     if (selectedCategory === 'ALL') return features;
@@ -97,6 +100,7 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
   }, [features, selectedCategory]);
 
   const layers = [
+    // Layer 1: GPU-Accelerated Microplastic Density Heatmap Layer
     new HeatmapLayer({
       id: 'plastic-heatmap-layer',
       data: plasticPoints,
@@ -106,10 +110,10 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
       intensity: 1.8,
       threshold: 0.03,
       colorRange: [
-        [34, 211, 238, 40],
-        [251, 146, 60, 160],
-        [244, 63, 94, 220],
-        [225, 29, 72, 255]
+        [34, 211, 238, 40],   // Cyan (Low Density)
+        [251, 146, 60, 160],  // Orange (Medium Density)
+        [244, 63, 94, 220],   // Crimson Red (High Density)
+        [225, 29, 72, 255]    // Deep Magenta (Critical Gyre Area)
       ],
       updateTriggers: {
         getPosition: [plasticPoints],
@@ -117,6 +121,7 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
       }
     }),
 
+    // Layer 2: Marine Telemetry Sightings Layer
     new ScatterplotLayer({
       id: 'sightings-layer',
       data: filteredFeatures,
@@ -173,23 +178,17 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
   }
 
   return (
-    <div style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', backgroundColor: '#020617' }}>
+    <div style={{ position: 'relative', width: '100vw', height: '100vh', backgroundColor: '#020617' }}>
       <DeckGL
-        initialViewState={INITIAL_VIEW_STATE}
+        viewState={viewState}
+        onViewStateChange={(e: any) => setViewState(e.viewState)}
         controller={true}
         layers={layers}
-        glOptions={{
-          webgl2: true,
-          failIfMajorPerformanceCaveat: false,
-        }}
-        onError={(error: any) => {
-          if (error?.message?.includes('WebGL') || error?.message?.includes('Context')) {
-            setIsWebGlSupported(false);
-          }
-        }}
+        style={{ position: 'absolute', top: '0', left: '0', width: '100%', height: '100%' }}
       >
       </DeckGL>
 
+      {/* Styled Glassmorphic Hover Tooltip */}
       {hoverInfo?.object && (
         <div
           style={{
