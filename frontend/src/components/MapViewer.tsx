@@ -9,12 +9,6 @@ import { ScatterplotLayer } from '@deck.gl/layers';
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 import { useTheme } from '@/context/ThemeContext';
 
-// Force Mapbox GL JS engine to use non-eval CSP Web Worker natively
-// @ts-ignore
-import MapboxWorker from 'worker-loader!mapbox-gl/dist/mapbox-gl-csp-worker';
-// @ts-ignore
-mapboxgl.workerClass = MapboxWorker;
-
 const INITIAL_VIEW_STATE = {
   longitude: -140.0,
   latitude: 25.0,
@@ -39,20 +33,23 @@ const CATEGORY_COLORS: Record<string, [number, number, number]> = {
 export default function MapViewer({ sightingsData, plasticZonesData, selectedCategory = 'ALL' }: MapViewerProps) {
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
   const [hoverInfo, setHoverInfo] = useState<any>(null);
-  const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [isWebGlSupported, setIsWebGlSupported] = useState<boolean>(true);
   const { theme } = useTheme();
 
-  // Force global access token assignment to Mapbox GL JS engine
+  // Debugging & Global Access Token Binding
   useEffect(() => {
+    console.log('=== MAPBOX TOKEN DEBUG ===');
+    console.log('Token length:', mapboxToken.length);
+    console.log('Raw Token Value:', mapboxToken ? `${mapboxToken.substring(0, 10)}...` : 'EMPTY_STRING');
+
     if (mapboxToken) {
       mapboxgl.accessToken = mapboxToken;
     } else {
-      console.warn('Mapbox Token is missing from NEXT_PUBLIC_MAPBOX_TOKEN environment variable!');
+      console.error('❌ CRITICAL: NEXT_PUBLIC_MAPBOX_TOKEN is missing or empty in the client bundle!');
     }
   }, [mapboxToken]);
 
-  // Validate hardware WebGL context acceleration support
+  // Validate hardware WebGL acceleration context support in client browser
   useEffect(() => {
     try {
       const canvas = document.createElement('canvas');
@@ -184,13 +181,20 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
   }
 
   return (
-    <div style={{ position: 'relative', width: '100vw', height: '100vh', backgroundColor: '#020617' }}>
+    <div style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', backgroundColor: '#020617' }}>
       <DeckGL
-        viewState={viewState}
-        onViewStateChange={(e: any) => setViewState(e.viewState)}
+        initialViewState={INITIAL_VIEW_STATE}
         controller={true}
         layers={layers}
-        style={{ position: 'absolute', top: '0', left: '0', width: '100%', height: '100%' }}
+        glOptions={{
+          webgl2: true,
+          failIfMajorPerformanceCaveat: false,
+        }}
+        onError={(error: any) => {
+          if (error?.message?.includes('WebGL') || error?.message?.includes('Context')) {
+            setIsWebGlSupported(false);
+          }
+        }}
       >
       </DeckGL>
 
