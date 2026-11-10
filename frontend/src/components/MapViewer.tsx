@@ -1,54 +1,66 @@
 'use client';
- 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import DeckGL from '@deck.gl/react';
-// Renombrado a MapGL para no pisar el `Map` nativo de JavaScript.
-// Si usas react-map-gl v8, cambia la ruta a: 'react-map-gl/mapbox'
 import MapGL from 'react-map-gl';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { ScatterplotLayer } from '@deck.gl/layers';
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 import { useTheme } from '@/context/ThemeContext';
- 
-const INITIAL_VIEW_STATE = {
+
+const DEFAULT_INITIAL_VIEW = {
   longitude: -140.0,
   latitude: 25.0,
   zoom: 1.8,
   pitch: 0,
   bearing: 0,
 };
- 
+
 interface MapViewerProps {
   sightingsData: any;
   plasticZonesData: any;
   selectedCategory?: string;
+  viewState?: any;
+  onViewStateChange?: (newViewState: any) => void;
 }
- 
+
 const CATEGORY_COLORS: Record<string, [number, number, number]> = {
   Reptile: [16, 185, 129],
   Mammal: [59, 130, 246],
   Bird: [245, 158, 11],
   Fish: [168, 85, 247],
 };
- 
+
 export default function MapViewer({
   sightingsData,
   plasticZonesData,
   selectedCategory = 'ALL',
+  viewState: externalViewState,
+  onViewStateChange: externalOnViewStateChange,
 }: MapViewerProps) {
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
   const [hoverInfo, setHoverInfo] = useState<any>(null);
-  const [viewState, setViewState] = useState<any>(INITIAL_VIEW_STATE);
+  const [internalViewState, setInternalViewState] = useState<any>(DEFAULT_INITIAL_VIEW);
   const [isWebGlSupported, setIsWebGlSupported] = useState<boolean>(true);
   const { theme } = useTheme();
- 
+
+  const currentViewState = externalViewState || internalViewState;
+  const handleViewStateChange = (evt: any) => {
+    const nextState = evt.viewState || evt;
+    if (externalOnViewStateChange) {
+      externalOnViewStateChange(nextState);
+    } else {
+      setInternalViewState(nextState);
+    }
+  };
+
   useEffect(() => {
     if (mapboxToken) {
       mapboxgl.accessToken = mapboxToken;
     }
   }, [mapboxToken]);
- 
+
   useEffect(() => {
     try {
       const canvas = document.createElement('canvas');
@@ -63,12 +75,12 @@ export default function MapViewer({
       setIsWebGlSupported(false);
     }
   }, []);
- 
+
   const mapStyle =
     theme === 'ocean'
       ? 'mapbox://styles/mapbox/navigation-night-v1'
       : 'mapbox://styles/mapbox/dark-v11';
- 
+
   const plasticPoints = useMemo(() => {
     const features = plasticZonesData?.features || [];
     return features.map((f: any) => {
@@ -88,14 +100,12 @@ export default function MapViewer({
       };
     });
   }, [plasticZonesData]);
- 
-  // useMemo para que `features` no sea un array nuevo en cada render
-  // (con `|| []` suelto se recreaba siempre y anulaba el useMemo de abajo).
+
   const features = useMemo(() => sightingsData?.features || [], [sightingsData]);
- 
+
   const filteredFeatures = useMemo(() => {
     if (selectedCategory === 'ALL') return features;
- 
+
     const target = selectedCategory.toLowerCase();
     return features.filter((f: any) => {
       const cat = f.properties?.category?.toLowerCase() || '';
@@ -105,9 +115,7 @@ export default function MapViewer({
       return cat.includes(target);
     });
   }, [features, selectedCategory]);
- 
-  // Las capas se memorizan: antes se recreaban en cada hover (setHoverInfo),
-  // lo que provocaba trabajo innecesario de deck.gl en cada movimiento del ratón.
+
   const layers = useMemo(
     () => [
       new HeatmapLayer({
@@ -129,7 +137,7 @@ export default function MapViewer({
           getWeight: [plasticPoints],
         },
       }),
- 
+
       new ScatterplotLayer({
         id: 'sightings-layer',
         data: filteredFeatures,
@@ -152,7 +160,7 @@ export default function MapViewer({
     ],
     [plasticPoints, filteredFeatures, selectedCategory]
   );
- 
+
   if (!isWebGlSupported) {
     return (
       <div
@@ -172,13 +180,12 @@ export default function MapViewer({
       </div>
     );
   }
- 
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: '#020617' }}>
-      {/* Mapa base: lo controla DeckGL, por eso va con interactive={false} */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
         <MapGL
-          {...viewState}
+          {...currentViewState}
           interactive={false}
           projection="mercator"
           mapLib={mapboxgl}
@@ -188,18 +195,17 @@ export default function MapViewer({
           style={{ width: '100%', height: '100%' }}
         />
       </div>
- 
-      {/* Capas de datos + controlador de interacción */}
+
       <div style={{ position: 'absolute', inset: 0, zIndex: 2 }}>
         <DeckGL
-          viewState={viewState}
-          onViewStateChange={(e: any) => setViewState(e.viewState)}
+          viewState={currentViewState}
+          onViewStateChange={handleViewStateChange}
           controller={true}
           layers={layers}
           style={{ width: '100%', height: '100%' }}
         />
       </div>
- 
+
       {hoverInfo?.object && (
         <div
           style={{
@@ -233,4 +239,3 @@ export default function MapViewer({
     </div>
   );
 }
- 

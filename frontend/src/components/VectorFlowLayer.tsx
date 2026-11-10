@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import { WebMercatorViewport } from '@deck.gl/core';
 
 interface VectorPoint {
   lon: number;
@@ -11,21 +12,29 @@ interface VectorPoint {
 
 interface VectorFlowLayerProps {
   vectorData: VectorPoint[];
+  viewState: {
+    longitude: number;
+    latitude: number;
+    zoom: number;
+    pitch?: number;
+    bearing?: number;
+  };
   maxParticles?: number;
   speedFactor?: number;
 }
 
-interface Particle {
-  x: number;
-  y: number;
+interface GeoParticle {
+  lon: number;
+  lat: number;
   age: number;
   maxAge: number;
 }
 
 export default function VectorFlowLayer({
   vectorData,
-  maxParticles = 2500,
-  speedFactor = 0.4,
+  viewState,
+  maxParticles = 2000,
+  speedFactor = 0.04,
 }: VectorFlowLayerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -37,33 +46,44 @@ export default function VectorFlowLayer({
     if (!ctx) return;
 
     let animationFrameId: number;
-    
-    // Adjust canvas resolution dynamically to full browser viewport
+
     const width = (canvas.width = window.innerWidth);
     const height = (canvas.height = window.innerHeight);
 
-    // Initialize random particle field pool
-    const particles: Particle[] = Array.from({ length: maxParticles }, () => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
+    // Generar proyección espacial Web Mercator del viewport actual
+    const viewport = new WebMercatorViewport({
+      width,
+      height,
+      longitude: viewState.longitude,
+      latitude: viewState.latitude,
+      zoom: viewState.zoom,
+      pitch: viewState.pitch || 0,
+      bearing: viewState.bearing || 0,
+    });
+
+    const bounds = viewport.getBounds();
+    const minLon = bounds[0];
+    const minLat = bounds[1];
+    const maxLon = bounds[2];
+    const maxLat = bounds[3];
+
+    // Inicializar pool de partículas en coordenadas geográficas fijas
+    const particles: GeoParticle[] = Array.from({ length: maxParticles }, () => ({
+      lon: minLon + Math.random() * (maxLon - minLon),
+      lat: minLat + Math.random() * (maxLat - minLat),
       age: Math.floor(Math.random() * 80),
       maxAge: 80,
     }));
 
-    // Find closest spatial grid cell vector (u, v) for screen point
-    const getVector = (screenX: number, screenY: number) => {
-      const lon = (screenX / width) * 360 - 180;
-      const lat = 90 - (screenY / height) * 180;
-
+    const getVector = (geoLon: number, geoLat: number) => {
       let closestU = 0.2;
       let closestV = 0.05;
       let minDistance = Infinity;
 
-      // Sample stride for performance
-      for (let i = 0; i < vectorData.length; i += 3) {
+      for (let i = 0; i < vectorData.length; i += 2) {
         const pt = vectorData[i];
-        const dx = pt.lon - lon;
-        const dy = pt.lat - lat;
+        const dx = pt.lon - geoLon;
+        const dy = pt.lat - geoLat;
         const dist = dx * dx + dy * dy;
 
         if (dist < minDistance) {
@@ -77,34 +97,63 @@ export default function VectorFlowLayer({
     };
 
     const render = () => {
-      // Create trailing dynamic fade out
-      ctx.fillStyle = 'rgba(2, 6, 23, 0.92)';
+      const currentViewport = new WebMercatorViewport({
+        width: canvas.width,
+        height: canvas.height,
+        longitude: viewState.longitude,
+        latitude: viewState.latitude,
+        zoom: viewState.zoom,
+        pitch: viewState.pitch || 0,
+        bearing: viewState.bearing || 0,
+      });
+
+      const currentBounds = currentViewport.getBounds();
+      const cMinLon = currentBounds[0];
+      const cMinLat = currentBounds[1];
+      const cMaxLon = currentBounds[2];
+      const cMaxLat = currentBounds[3];
+
+      ctx.fillStyle = 'rgba(2, 6, 23, 0.90)';
       ctx.globalCompositeOperation = 'destination-in';
-      ctx.fillRect(0, 0, width, height);
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       ctx.globalCompositeOperation = 'source-over';
       ctx.lineWidth = 1.4;
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.75)'; // Electric Cyan ocean stream lines
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.8)';
 
       ctx.beginPath();
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
-        const vec = getVector(p.x, p.y);
 
-        const nextX = p.x + vec.u * speedFactor * 12;
-        const nextY = p.y - vec.v * speedFactor * 12;
+        // Mapear coordenadas geográficas a píxeles de pantalla en tiempo real
+        const [x, y] = currentViewport.project([p.lon, p.lat]);
 
-        ctx.moveTo(p.x, p.y);
-        ctx.lineTo(nextX, nextY);
+        const vec = getVector(p.lon, p.lat);
 
-        p.x = nextX;
-        p.y = nextY;
+        const nextLon = p.lon + vec.u * speedFactor;
+        const nextLat = p.lat + vec.v * speedFactor;
+
+        const [nextX, nextY] = currentViewport.project([nextLon, nextLat]);
+
+        if (x >= 0 && x <= canvas.width && y >= 0 && y <= canvas.height) {
+          ctx.moveTo(x, y);
+          ctx.lineTo(nextX, nextY);
+        }
+
+        p.lon = nextLon;
+        p.lat = nextLat;
         p.age++;
 
-        // Reset dead or out-of-bounds particles
-        if (p.age >= p.maxAge || p.x < 0 || p.x > width || p.y < 0 || p.y > height) {
-          p.x = Math.random() * width;
-          p.y = Math.random() * height;
+        // Reiniciar partículas fuera del campo visual actual
+        if (
+          p.age >= p.maxAge ||
+          p.lon < cMinLon ||
+          p.lon > cMaxLon ||
+          p.lat < cMinLat ||
+          p.lat > cMaxLat
+        ) {
+          p.lon = cMinLon + Math.random() * (cMaxLon - cMinLon);
+          p.lat = cMinLat + Math.random() * (cMaxLat - cMinLat);
           p.age = 0;
         }
       }
@@ -116,7 +165,7 @@ export default function VectorFlowLayer({
     render();
 
     return () => cancelAnimationFrame(animationFrameId);
-  }, [vectorData, maxParticles, speedFactor]);
+  }, [vectorData, viewState, maxParticles, speedFactor]);
 
   return (
     <canvas

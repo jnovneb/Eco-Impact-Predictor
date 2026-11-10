@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ImpactMetrics } from '@/services/api';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -31,9 +31,23 @@ export default function DashboardOverlay({
 }: DashboardOverlayProps) {
   const { theme, toggleTheme } = useTheme();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const isOcean = theme === 'ocean';
 
-  const bgColor = isOcean ? 'rgba(3, 20, 42, 0.92)' : 'rgba(15, 23, 42, 0.9)';
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 640;
+      setIsMobile(mobile);
+      if (mobile) {
+        setIsCollapsed(true);
+      }
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const bgColor = isOcean ? 'rgba(3, 20, 42, 0.94)' : 'rgba(15, 23, 42, 0.92)';
   const borderColor = isOcean ? 'rgba(56, 189, 248, 0.5)' : 'rgba(51, 65, 85, 0.6)';
   const accentColor = isOcean ? '#38bdf8' : '#2dd4bf';
   const glowShadow = isOcean
@@ -44,17 +58,18 @@ export default function DashboardOverlay({
     <div
       style={{
         position: 'fixed',
-        top: '16px',
+        top: isMobile ? 'auto' : '16px',
+        bottom: '16px',
         left: '16px',
+        right: isMobile ? '16px' : 'auto',
         zIndex: 999999,
-        width: 'calc(100vw - 32px)',
-        maxWidth: '350px',
-        maxHeight: 'calc(100vh - 32px)',
+        width: isMobile ? 'auto' : '340px',
+        maxHeight: isMobile ? (isCollapsed ? '58px' : '65vh') : 'calc(100vh - 32px)',
         overflowY: 'auto',
         backgroundColor: bgColor,
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
-        padding: isCollapsed ? '12px 16px' : '20px',
+        padding: isCollapsed ? '10px 14px' : '16px',
         borderRadius: '16px',
         border: `1px solid ${borderColor}`,
         color: '#f8fafc',
@@ -67,7 +82,7 @@ export default function DashboardOverlay({
       {/* Header + Actions */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h1 style={{ fontSize: '17px', fontWeight: '800', margin: 0, color: accentColor, letterSpacing: '-0.025em' }}>
+          <h1 style={{ fontSize: isMobile ? '15px' : '17px', fontWeight: '800', margin: 0, color: accentColor, letterSpacing: '-0.025em' }}>
             Eco-Impact Predictor
           </h1>
           {!isCollapsed && (
@@ -81,7 +96,7 @@ export default function DashboardOverlay({
           <button
             onClick={toggleTheme}
             style={{
-              padding: '5px 9px',
+              padding: '4px 8px',
               borderRadius: '8px',
               fontSize: '11px',
               fontWeight: '700',
@@ -89,7 +104,6 @@ export default function DashboardOverlay({
               backgroundColor: isOcean ? '#0284c7' : 'rgba(30, 41, 59, 0.8)',
               color: '#ffffff',
               cursor: 'pointer',
-              transition: 'all 0.2s ease',
             }}
             title={isOcean ? 'Switch to Dark Mode' : 'Switch to Ocean Mode'}
           >
@@ -99,7 +113,7 @@ export default function DashboardOverlay({
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
             style={{
-              padding: '5px 9px',
+              padding: '4px 8px',
               borderRadius: '8px',
               fontSize: '11px',
               fontWeight: '700',
@@ -110,27 +124,27 @@ export default function DashboardOverlay({
             }}
             title={isCollapsed ? 'Expand Dashboard' : 'Minimize Dashboard'}
           >
-            {isCollapsed ? '▼' : '▲'}
+            {isCollapsed ? '▲' : '▼'}
           </button>
         </div>
       </div>
 
       {!isCollapsed && (
         <>
-          <hr style={{ border: 'none', borderTop: `1px solid ${isOcean ? 'rgba(56, 189, 248, 0.25)' : 'rgba(51, 65, 85, 0.5)'}`, margin: '12px 0' }} />
+          <hr style={{ border: 'none', borderTop: `1px solid ${isOcean ? 'rgba(56, 189, 248, 0.25)' : 'rgba(51, 65, 85, 0.5)'}`, margin: '10px 0' }} />
 
           {/* Metrics Section */}
           {loading ? (
-            <div style={{ fontSize: '12px', color: '#94a3b8', padding: '10px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ fontSize: '11px', color: '#94a3b8', padding: '8px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>Computing PostGIS spatial intersections...</span>
             </div>
           ) : metrics ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: '10px', textTransform: 'uppercase', color: isOcean ? '#7dd3fc' : '#94a3b8', fontWeight: 700, letterSpacing: '0.05em' }}>
                   Species Exposure Risk
                 </span>
-                <span style={{ fontSize: '24px', fontWeight: '900', color: accentColor }}>
+                <span style={{ fontSize: '22px', fontWeight: '900', color: accentColor }}>
                   {metrics.overall_species_risk_index_pct}%
                 </span>
               </div>
@@ -140,21 +154,21 @@ export default function DashboardOverlay({
                   display: 'grid',
                   gridTemplateColumns: '1fr 1fr',
                   gap: '8px',
-                  padding: '10px',
-                  borderRadius: '12px',
+                  padding: '8px 10px',
+                  borderRadius: '10px',
                   backgroundColor: isOcean ? 'rgba(7, 42, 86, 0.6)' : 'rgba(2, 6, 23, 0.5)',
                   border: `1px solid ${isOcean ? 'rgba(56, 189, 248, 0.3)' : 'rgba(30, 41, 59, 0.6)'}`,
                 }}
               >
                 <div>
                   <span style={{ fontSize: '9px', color: isOcean ? '#7dd3fc' : '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>Total Telemetry</span>
-                  <p style={{ fontSize: '15px', fontWeight: '700', margin: '2px 0 0 0', color: '#f1f5f9' }}>
+                  <p style={{ fontSize: '14px', fontWeight: '700', margin: '2px 0 0 0', color: '#f1f5f9' }}>
                     {metrics.total_sightings_analyzed}
                   </p>
                 </div>
                 <div>
                   <span style={{ fontSize: '9px', color: isOcean ? '#7dd3fc' : '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>Gyre Overlaps</span>
-                  <p style={{ fontSize: '15px', fontWeight: '700', margin: '2px 0 0 0', color: '#fb7185' }}>
+                  <p style={{ fontSize: '14px', fontWeight: '700', margin: '2px 0 0 0', color: '#fb7185' }}>
                     {metrics.sightings_in_high_risk_zones}
                   </p>
                 </div>
@@ -162,12 +176,12 @@ export default function DashboardOverlay({
             </div>
           ) : null}
 
-          {/* Predictive ML Control (Drift Forecast Slider) */}
+          {/* Predictive ML Control */}
           {onForecastChange && (
             <>
-              <hr style={{ border: 'none', borderTop: `1px solid ${isOcean ? 'rgba(56, 189, 248, 0.25)' : 'rgba(51, 65, 85, 0.5)'}`, margin: '12px 0' }} />
+              <hr style={{ border: 'none', borderTop: `1px solid ${isOcean ? 'rgba(56, 189, 248, 0.25)' : 'rgba(51, 65, 85, 0.5)'}`, margin: '10px 0' }} />
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                   <span style={{ fontSize: '10px', textTransform: 'uppercase', color: isOcean ? '#7dd3fc' : '#94a3b8', fontWeight: 700, letterSpacing: '0.05em' }}>
                     Drift Model Forecast
                   </span>
@@ -190,7 +204,7 @@ export default function DashboardOverlay({
                   }}
                 />
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#64748b', marginTop: '3px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: '#64748b', marginTop: '2px' }}>
                   <span>Live</span>
                   <span>+7d</span>
                   <span>+14d</span>
@@ -201,14 +215,14 @@ export default function DashboardOverlay({
             </>
           )}
 
-          <hr style={{ border: 'none', borderTop: `1px solid ${isOcean ? 'rgba(56, 189, 248, 0.25)' : 'rgba(51, 65, 85, 0.5)'}`, margin: '12px 0' }} />
+          <hr style={{ border: 'none', borderTop: `1px solid ${isOcean ? 'rgba(56, 189, 248, 0.25)' : 'rgba(51, 65, 85, 0.5)'}`, margin: '10px 0' }} />
 
           {/* Filter Options */}
           <div>
-            <span style={{ fontSize: '10px', textTransform: 'uppercase', color: isOcean ? '#7dd3fc' : '#94a3b8', fontWeight: 700, letterSpacing: '0.05em', display: 'block', marginBottom: '8px' }}>
+            <span style={{ fontSize: '10px', textTransform: 'uppercase', color: isOcean ? '#7dd3fc' : '#94a3b8', fontWeight: 700, letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>
               Filter Telemetry by Species
             </span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               {CATEGORY_LEGEND.map((item) => {
                 const isActive = selectedCategory === item.id;
                 return (
@@ -220,9 +234,9 @@ export default function DashboardOverlay({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      padding: '7px 12px',
-                      borderRadius: '10px',
-                      fontSize: '12px',
+                      padding: '6px 10px',
+                      borderRadius: '8px',
+                      fontSize: '11px',
                       fontWeight: isActive ? '700' : '400',
                       border: isActive ? `1px solid ${accentColor}` : '1px solid transparent',
                       backgroundColor: isActive
@@ -230,7 +244,6 @@ export default function DashboardOverlay({
                         : 'transparent',
                       color: isActive ? '#ffffff' : (isOcean ? '#cbd5e1' : '#94a3b8'),
                       cursor: 'pointer',
-                      transition: 'all 0.15s ease',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

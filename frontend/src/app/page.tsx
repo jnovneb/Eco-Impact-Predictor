@@ -12,6 +12,14 @@ import {
   ImpactMetrics 
 } from '@/services/api';
 
+const INITIAL_VIEW_STATE = {
+  longitude: -140.0,
+  latitude: 25.0,
+  zoom: 1.8,
+  pitch: 0,
+  bearing: 0,
+};
+
 export default function Home() {
   const [sightingsData, setSightingsData] = useState<any>(null);
   const [plasticZonesData, setPlasticZonesData] = useState<any>(null);
@@ -20,8 +28,10 @@ export default function Home() {
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [forecastDays, setForecastDays] = useState<number>(0);
+  
+  // ViewState compartido entre DeckGL/Mapbox y la capa de vectores de corrientes
+  const [viewState, setViewState] = useState<any>(INITIAL_VIEW_STATE);
 
-  // Fetch ocean current velocity vector grid using api.ts service wrapper
   useEffect(() => {
     fetchOceanCurrentsGrid()
       .then((res) => {
@@ -34,7 +44,6 @@ export default function Home() {
       });
   }, []);
 
-  // Primary geospatial telemetry & impact analysis ingestion pipeline
   useEffect(() => {
     async function loadData() {
       setLoading(true);
@@ -60,7 +69,6 @@ export default function Home() {
     loadData();
   }, [forecastDays, selectedCategory]);
 
-  // Resilient species telemetry filtering
   const filteredSightings = useMemo(() => {
     if (!sightingsData || !sightingsData.features) return null;
     if (selectedCategory === 'ALL') return sightingsData;
@@ -81,19 +89,21 @@ export default function Home() {
 
   return (
     <main style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', backgroundColor: '#020617' }}>
-      {/* 1. Primary Deck.gl & Mapbox Base Layer */}
+      {/* 1. DeckGL + Mapbox Base Layer */}
       <MapViewer
         sightingsData={filteredSightings}
         plasticZonesData={plasticZonesData}
         selectedCategory={selectedCategory}
+        viewState={viewState}
+        onViewStateChange={setViewState}
       />
 
-      {/* 2. Real-Time Ocean Current Vector Flow Overlay Layer */}
+      {/* 2. Capa de corrientes vinculada al ViewState del mapa */}
       {vectorGrid.length > 0 && (
-        <VectorFlowLayer vectorData={vectorGrid} />
+        <VectorFlowLayer vectorData={vectorGrid} viewState={viewState} />
       )}
 
-      {/* 3. Interactive Analytics HUD & Inspector Panel */}
+      {/* 3. Panel de control adaptable a pantallas móviles */}
       <DashboardOverlay
         metrics={metrics}
         loading={loading}
