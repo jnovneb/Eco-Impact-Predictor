@@ -33,15 +33,18 @@ const CATEGORY_COLORS: Record<string, [number, number, number]> = {
 export default function MapViewer({ sightingsData, plasticZonesData, selectedCategory = 'ALL' }: MapViewerProps) {
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
   const [hoverInfo, setHoverInfo] = useState<any>(null);
+  const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [isWebGlSupported, setIsWebGlSupported] = useState<boolean>(true);
   const { theme } = useTheme();
 
+  // Explicitly bind access token to Mapbox GL JS engine
   useEffect(() => {
     if (mapboxToken) {
       mapboxgl.accessToken = mapboxToken;
     }
   }, [mapboxToken]);
 
+  // Validate hardware WebGL context support
   useEffect(() => {
     try {
       const canvas = document.createElement('canvas');
@@ -58,6 +61,7 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
     ? 'mapbox://styles/mapbox/navigation-night-v1'
     : 'mapbox://styles/mapbox/dark-v11';
 
+  // Process plastic centroid points
   const plasticPoints = useMemo(() => {
     const features = plasticZonesData?.features || [];
     return features.map((f: any) => {
@@ -78,6 +82,7 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
     });
   }, [plasticZonesData]);
 
+  // Filter sightings by species category
   const features = sightingsData?.features || [];
   const filteredFeatures = useMemo(() => {
     if (selectedCategory === 'ALL') return features;
@@ -143,17 +148,30 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
   }
 
   return (
-    <div style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', backgroundColor: '#020617' }}>
-      <DeckGL
-        initialViewState={INITIAL_VIEW_STATE}
-        controller={true}
-        layers={layers}
-        glOptions={{
-          preserveDrawingBuffer: true,
-        }}
-      >
-      </DeckGL>
+    <div style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: '#020617' }}>
+      {/* CAPA INFERIOR (Z-Index 1): Mapbox Base Map */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
+         setViewState(evt.viewState)}
+          mapLib={mapboxgl}
+          mapboxAccessToken={mapboxToken}
+          mapStyle={mapStyle}
+          reuseMaps={true}
+          style={{ width: '100%', height: '100%' }}
+        />
+      </div>
 
+      {/* CAPA SUPERIOR (Z-Index 2): DeckGL Overlay */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none' }}>
+        <DeckGL
+          viewState={viewState}
+          onViewStateChange={(e: any) => setViewState(e.viewState)}
+          controller={true}
+          layers={layers}
+          style={{ width: '100%', height: '100%', pointerEvents: 'all' }}
+        />
+      </div>
+
+      {/* Tooltip */}
       {hoverInfo?.object && (
         <div
           style={{
