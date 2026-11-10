@@ -24,10 +24,10 @@ interface MapViewerProps {
 }
 
 const CATEGORY_COLORS: Record<string, [number, number, number]> = {
-  Reptile: [16, 185, 129],  // Emerald Green
-  Mammal: [59, 130, 246],   // Bright Blue
-  Bird: [245, 158, 11],     // Amber
-  Fish: [168, 85, 247],     // Purple
+  Reptile: [16, 185, 129],
+  Mammal: [59, 130, 246],
+  Bird: [245, 158, 11],
+  Fish: [168, 85, 247],
 };
 
 export default function MapViewer({ sightingsData, plasticZonesData, selectedCategory = 'ALL' }: MapViewerProps) {
@@ -37,14 +37,12 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
   const [isWebGlSupported, setIsWebGlSupported] = useState<boolean>(true);
   const { theme } = useTheme();
 
-  // Explicitly bind access token to Mapbox GL JS engine
   useEffect(() => {
     if (mapboxToken) {
       mapboxgl.accessToken = mapboxToken;
     }
   }, [mapboxToken]);
 
-  // Validate hardware WebGL context support
   useEffect(() => {
     try {
       const canvas = document.createElement('canvas');
@@ -61,7 +59,6 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
     ? 'mapbox://styles/mapbox/navigation-night-v1'
     : 'mapbox://styles/mapbox/dark-v11';
 
-  // Process plastic centroid points
   const plasticPoints = useMemo(() => {
     const features = plasticZonesData?.features || [];
     return features.map((f: any) => {
@@ -82,7 +79,6 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
     });
   }, [plasticZonesData]);
 
-  // Filter sightings by species category
   const features = sightingsData?.features || [];
   const filteredFeatures = useMemo(() => {
     if (selectedCategory === 'ALL') return features;
@@ -149,7 +145,6 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: '#020617' }}>
-      {/* BASE LAYER (Z-Index 1): Mapbox Base Map */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
          setViewState(evt.viewState)}
           mapLib={mapboxgl}
@@ -160,7 +155,6 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
         />
       </div>
 
-      {/* OVERLAY LAYER (Z-Index 2): DeckGL Canvas */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none' }}>
         <DeckGL
           viewState={viewState}
@@ -171,7 +165,6 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
         />
       </div>
 
-      {/* Tooltip */}
       {hoverInfo?.object && (
         <div
           style={{
