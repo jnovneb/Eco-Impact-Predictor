@@ -1,20 +1,27 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from django.contrib.gis.geos import Polygon, Point
+from django.contrib.gis.geos import Polygon, MultiPolygon
+from django.contrib.gis.db.models.functions import AsGeoJSON
+import json
+
 from .models import MarineSighting, MicroplasticDensityZone
 from .serializers import MarineSightingSerializer, MicroplasticDensityZoneSerializer
-from .services import fetch_live_noaa_plastics
+from .services import fetch_live_noaa_plastics, get_ocean_currents_grid
 from .predictor import predict_plastic_drift
-from .services import get_ocean_currents_grid
 
 
-def point_in_bbox(lon, lat, bbox):
-    """
-    Verifica si un punto (lon, lat) cae dentro de la Bounding Box [min_lon, min_lat, max_lon, max_lat].
-    """
-    min_x, min_y, max_x, max_y = bbox
-    return min_x <= lon <= max_x and min_y <= lat <= max_y
+def get_filtered_sightings_qs(selected_category):
+    """Filtro reutilizable de categorías para el QuerySet de avistamientos."""
+    qs = MarineSighting.objects.all()
+    if selected_category and selected_category != 'ALL':
+        target = selected_category.lower()
+        if target == 'fish':
+            qs = qs.filter(category__iexact='Fish')
+        else:
+            qs = qs.filter(category__icontains=target)
+    return qs
+
 
 class OceanCurrentsGridView(APIView):
     def get(self, request):
@@ -24,7 +31,7 @@ class OceanCurrentsGridView(APIView):
 
 class EnvironmentalImpactAnalysisView(APIView):
     """
-    Calcula el Exposure Risk Index cruzando la telemetría almacenada en PostGIS con los giros de microplásticos.
+    Calcula el Exposure Risk Index delegando las intersecciones espaciales directamente a PostGIS.
     """
     def get(self, request):
         try:
@@ -34,71 +41,42 @@ class EnvironmentalImpactAnalysisView(APIView):
 
         selected_category = request.query_params.get('category', 'ALL')
 
-        # 1. Zonas de plástico (con simulación advectiva de deriva si forecast_days > 0)
+        # 1. Obtener polígonos activos de plástico
         live_plastics = fetch_live_noaa_plastics()
         if forecast_days > 0:
             active_plastics = predict_plastic_drift(live_plastics, days=forecast_days)
         else:
             active_plastics = live_plastics
 
-        # 2. Consultar avistamientos filtrados directamente en PostGIS
-        qs = MarineSighting.objects.all()
-        if selected_category and selected_category != 'ALL':
-            target = selected_category.lower()
-            if target == 'fish':
-                qs = qs.filter(category__iexact='Fish')
-            else:
-                qs = qs.filter(category__icontains=target)
+        # 2. Filtrar avistamientos en PostGIS
+        qs = get_filtered_sightings_qs(selected_category)
+        total_sightings = qs.count()
 
-        sightings_points = list(qs.values_list('location', flat=True))
-        total_sightings = len(sightings_points)
         impacted_count = 0
-
         if total_sightings > 0 and active_plastics:
-            bboxes = []
             geos_polys = []
 
             for feat in active_plastics:
                 try:
                     coords = feat["geometry"]["coordinates"][0]
-                    lons = [float(pt[0]) for pt in coords]
-                    lats = [float(pt[1]) for pt in coords]
-                    
-                    bbox = [min(lons), min(lats), max(lons), max(lats)]
-                    bboxes.append(bbox)
-
                     cleaned_coords = [[float(pt[0]), float(pt[1])] for pt in coords]
                     geos_polys.append(Polygon(cleaned_coords))
                 except Exception as poly_err:
                     print(f"[WARN] Polygon parsing error: {poly_err}")
                     continue
 
-            # Evaluación de intersección espacial optimizada
-            for point in sightings_points:
+            # 3. Intersección espacial masiva en PostGIS usando índices GiST
+            if geos_polys:
                 try:
-                    p_lon, p_lat = point.x, point.y
-
-                    hit = False
-                    for bbox in bboxes:
-                        if point_in_bbox(p_lon, p_lat, bbox):
-                            hit = True
-                            break
-
-                    if not hit:
-                        for poly in geos_polys:
-                            if poly.contains(point) or poly.intersects(point):
-                                hit = True
-                                break
-
-                    if hit:
-                        impacted_count += 1
-
+                    combined_poly = MultiPolygon(geos_polys)
+                    impacted_count = qs.filter(location__intersects=combined_poly).count()
                 except Exception:
-                    continue
+                    # Fallback de unión en caso de geometrías complejas no contiguas
+                    impacted_count = qs.filter(
+                        location__intersects=geos_polys[0]
+                    ).count() if geos_polys else 0
 
-            risk_pct = round((impacted_count / total_sightings) * 100, 2)
-        else:
-            risk_pct = 0.0
+        risk_pct = round((impacted_count / total_sightings) * 100, 2) if total_sightings > 0 else 0.0
 
         return Response({
             "metrics": {
@@ -111,29 +89,20 @@ class EnvironmentalImpactAnalysisView(APIView):
 
 class AllSightingsView(APIView):
     """
-    Devuelve la telemetría marina como GeoJSON FeatureCollection.
-    Filtra por categoría directamente en la base de datos para transferir sólo los bytes requeridos.
+    Devuelve la telemetría marina como GeoJSON FeatureCollection serializada directamente desde PostGIS.
     """
     def get(self, request):
         selected_category = request.query_params.get('category', 'ALL')
+        qs = get_filtered_sightings_qs(selected_category)
 
-        qs = MarineSighting.objects.all()
-        if selected_category and selected_category != 'ALL':
-            target = selected_category.lower()
-            if target == 'fish':
-                qs = qs.filter(category__iexact='Fish')
-            else:
-                qs = qs.filter(category__icontains=target)
-
-        # Consulta proyectada super rápida sin instanciar objetos pesados de Django ORM
-        sightings_data = qs.values('id', 'species_name', 'common_name', 'category', 'location')
+        # Genera la cadena GeoJSON directo en base de datos mediante PostGIS ST_AsGeoJSON
+        sightings_data = qs.annotate(geojson=AsGeoJSON('location')).values(
+            'id', 'species_name', 'common_name', 'category', 'geojson'
+        )
 
         features = [{
             "type": "Feature",
-            "geometry": {
-                "type": "Point",
-                "coordinates": [item["location"].x, item["location"].y]
-            },
+            "geometry": json.loads(item["geojson"]),
             "properties": {
                 "id": item["id"],
                 "species_name": item["species_name"],
@@ -179,21 +148,14 @@ class PredictiveImpactView(APIView):
         else:
             active_plastics = live_plastics
 
-        qs = MarineSighting.objects.all()
-        if selected_category and selected_category != 'ALL':
-            target = selected_category.lower()
-            if target == 'fish':
-                qs = qs.filter(category__iexact='Fish')
-            else:
-                qs = qs.filter(category__icontains=target)
+        qs = get_filtered_sightings_qs(selected_category)
+        sightings_data = qs.annotate(geojson=AsGeoJSON('location')).values(
+            'id', 'species_name', 'common_name', 'category', 'geojson'
+        )
 
-        sightings_data = qs.values('id', 'species_name', 'common_name', 'category', 'location')
         sightings_features = [{
             "type": "Feature",
-            "geometry": {
-                "type": "Point",
-                "coordinates": [item["location"].x, item["location"].y]
-            },
+            "geometry": json.loads(item["geojson"]),
             "properties": {
                 "id": item["id"],
                 "species_name": item["species_name"],
