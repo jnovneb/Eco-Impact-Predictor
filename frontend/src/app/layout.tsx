@@ -17,7 +17,7 @@ export default function RootLayout({
       <head>
         <meta
           httpEquiv="Content-Security-Policy"
-          content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://api.mapbox.com; worker-src 'self' blob:; child-src blob:; img-src 'self' data: blob: https://*.mapbox.com https://api.mapbox.com; connect-src 'self' https://*.mapbox.com https://api.mapbox.com https://eco-impact-predictor.onrender.com; style-src 'self' 'unsafe-inline' https://api.mapbox.com;"
+          content="default-src 'self' data: blob: https://*.mapbox.com https://api.mapbox.com; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.mapbox.com https://api.mapbox.com; worker-src 'self' blob:; child-src blob:; img-src 'self' data: blob: https://*.mapbox.com https://api.mapbox.com; font-src 'self' data: https://*.mapbox.com https://api.mapbox.com; connect-src 'self' https://*.mapbox.com https://api.mapbox.com https://eco-impact-predictor.onrender.com; style-src 'self' 'unsafe-inline' https://*.mapbox.com https://api.mapbox.com;"
         />
       </head>
       <body>

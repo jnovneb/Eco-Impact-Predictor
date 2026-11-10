@@ -8,15 +8,13 @@ const nextConfig = {
   transpilePackages: ['@deck.gl/layers', '@deck.gl/core', '@deck.gl/react'],
 
   webpack: (config, { isServer }) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      'mapbox-gl': 'mapbox-gl',
-    };
-    
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
+        path: false,
+        child_process: false,
+        worker_threads: false,
       };
     }
 
