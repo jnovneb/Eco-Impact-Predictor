@@ -180,6 +180,7 @@ export default function MapViewer({
         <MapGL
           {...viewState}
           interactive={false}
+          projection="mercator"
           mapLib={mapboxgl}
           mapboxAccessToken={mapboxToken}
           mapStyle={mapStyle}
@@ -232,3 +233,4 @@ export default function MapViewer({
     </div>
   );
 }
+ 
