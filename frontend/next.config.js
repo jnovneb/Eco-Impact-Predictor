@@ -10,8 +10,8 @@ const nextConfig = {
   webpack: (config, { isServer }) => {
     config.resolve.alias = {
       ...config.resolve.alias,
-      // Force Mapbox to use the CSP-compliant bundle natively
-      'mapbox-gl': 'mapbox-gl/dist/mapbox-gl-csp.js',
+      // El signo '$' asegura que solo coincida exactamente con 'mapbox-gl' y no afecte a 'mapbox-gl/dist/mapbox-gl.css'
+      'mapbox-gl$': 'mapbox-gl/dist/mapbox-gl-csp.js',
     };
 
     if (!isServer) {
