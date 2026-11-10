@@ -59,13 +59,15 @@ export default function DashboardOverlay({
       style={{
         position: 'fixed',
         top: isMobile ? 'auto' : '16px',
-        bottom: '16px',
+        bottom: isMobile ? '16px' : 'auto',
         left: '16px',
         right: isMobile ? '16px' : 'auto',
         zIndex: 999999,
         width: isMobile ? 'auto' : '340px',
-        maxHeight: isMobile ? (isCollapsed ? '58px' : '65vh') : 'calc(100vh - 32px)',
-        overflowY: 'auto',
+        maxHeight: isMobile
+          ? (isCollapsed ? '58px' : '65vh')
+          : (isCollapsed ? 'auto' : 'calc(100vh - 32px)'),
+        overflowY: isCollapsed ? 'hidden' : 'auto',
         backgroundColor: bgColor,
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
@@ -124,7 +126,7 @@ export default function DashboardOverlay({
             }}
             title={isCollapsed ? 'Expand Dashboard' : 'Minimize Dashboard'}
           >
-            {isCollapsed ? '▲' : '▼'}
+            {isCollapsed ? '▼' : '▲'}
           </button>
         </div>
       </div>
