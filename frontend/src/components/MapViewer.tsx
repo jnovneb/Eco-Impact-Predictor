@@ -9,6 +9,12 @@ import { ScatterplotLayer } from '@deck.gl/layers';
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 import { useTheme } from '@/context/ThemeContext';
 
+// Force Mapbox GL JS engine to use non-eval CSP Web Worker natively
+// @ts-ignore
+import MapboxWorker from 'worker-loader!mapbox-gl/dist/mapbox-gl-csp-worker';
+// @ts-ignore
+mapboxgl.workerClass = MapboxWorker;
+
 const INITIAL_VIEW_STATE = {
   longitude: -140.0,
   latitude: 25.0,
@@ -46,7 +52,7 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
     }
   }, [mapboxToken]);
 
-  // Validate browser hardware WebGL context support
+  // Validate hardware WebGL context acceleration support
   useEffect(() => {
     try {
       const canvas = document.createElement('canvas');
