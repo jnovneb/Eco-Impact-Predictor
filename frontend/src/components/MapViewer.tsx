@@ -36,14 +36,16 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
   const [isWebGlSupported, setIsWebGlSupported] = useState<boolean>(true);
   const { theme } = useTheme();
 
-  // Bind token globally to mapboxgl engine
+  // Force global access token assignment to the Mapbox GL JS engine
   useEffect(() => {
     if (mapboxToken) {
       mapboxgl.accessToken = mapboxToken;
+    } else {
+      console.warn('Mapbox Token is missing from NEXT_PUBLIC_MAPBOX_TOKEN environment variable!');
     }
   }, [mapboxToken]);
 
-  // Validate browser WebGL acceleration context
+  // Validate hardware WebGL acceleration context support in client browser
   useEffect(() => {
     try {
       const canvas = document.createElement('canvas');
@@ -60,6 +62,7 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
     ? 'mapbox://styles/mapbox/navigation-night-v1'
     : 'mapbox://styles/mapbox/dark-v11';
 
+  // Extract microplastic centroid points and density weights for GPU Heatmap aggregation
   const plasticPoints = useMemo(() => {
     const features = plasticZonesData?.features || [];
     return features.map((f: any) => {
@@ -80,6 +83,7 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
     });
   }, [plasticZonesData]);
 
+  // Dynamically filter marine species sightings based on selected category control
   const features = sightingsData?.features || [];
   const filteredFeatures = useMemo(() => {
     if (selectedCategory === 'ALL') return features;
@@ -95,6 +99,7 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
   }, [features, selectedCategory]);
 
   const layers = [
+    // Layer 1: GPU-Accelerated Microplastic Density Heatmap Layer
     new HeatmapLayer({
       id: 'plastic-heatmap-layer',
       data: plasticPoints,
@@ -104,10 +109,10 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
       intensity: 1.8,
       threshold: 0.03,
       colorRange: [
-        [34, 211, 238, 40],
-        [251, 146, 60, 160],
-        [244, 63, 94, 220],
-        [225, 29, 72, 255]
+        [34, 211, 238, 40],   // Cyan (Low Density)
+        [251, 146, 60, 160],  // Orange (Medium Density)
+        [244, 63, 94, 220],   // Crimson Red (High Density)
+        [225, 29, 72, 255]    // Deep Magenta (Critical Gyre Area)
       ],
       updateTriggers: {
         getPosition: [plasticPoints],
@@ -115,6 +120,7 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
       }
     }),
 
+    // Layer 2: Marine Telemetry Sightings Layer
     new ScatterplotLayer({
       id: 'sightings-layer',
       data: filteredFeatures,
@@ -138,8 +144,36 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
 
   if (!isWebGlSupported) {
     return (
-      <div style={{ position: 'absolute', inset: 0, backgroundColor: '#020617', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f43f5e' }}>
-        <p>WebGL Context Error</p>
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        width: '100%',
+        height: '100%',
+        backgroundColor: '#020617',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#f43f5e',
+        textAlign: 'center',
+        padding: '20px'
+      }}>
+        <div style={{
+          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+          border: '1px solid #334155',
+          padding: '24px 32px',
+          borderRadius: '12px',
+          maxWidth: '500px',
+          backdropFilter: 'blur(12px)'
+        }}>
+          <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 'bold' }}>
+            WebGL Context Error
+          </h3>
+          <p style={{ margin: 0, fontSize: '13px', color: '#94a3b8', lineHeight: '1.5' }}>
+            WebGL initialization blocked by browser flags or hardware limits.
+            <br />
+            Open <code style={{ color: '#2dd4bf' }}>chrome://flags/#use-angle</code>, select <strong>OpenGL</strong> or <strong>D3D11 WARP</strong>, and relaunch.
+          </p>
+        </div>
       </div>
     );
   }
@@ -162,6 +196,7 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
       >
       </DeckGL>
 
+      {/* Styled Glassmorphic Hover Tooltip */}
       {hoverInfo?.object && (
         <div
           style={{
