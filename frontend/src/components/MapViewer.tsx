@@ -149,7 +149,7 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', backgroundColor: '#020617' }}>
-      {/* CAPA INFERIOR (Z-Index 1): Mapbox Base Map */}
+      {/* BASE LAYER (Z-Index 1): Mapbox Base Map */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
          setViewState(evt.viewState)}
           mapLib={mapboxgl}
@@ -160,7 +160,7 @@ export default function MapViewer({ sightingsData, plasticZonesData, selectedCat
         />
       </div>
 
-      {/* CAPA SUPERIOR (Z-Index 2): DeckGL Overlay */}
+      {/* OVERLAY LAYER (Z-Index 2): DeckGL Canvas */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none' }}>
         <DeckGL
           viewState={viewState}
